@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>slow.png</file>
+        <file>fast.png</file>
+    </qresource>
+</RCC>
