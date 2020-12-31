@@ -24,8 +24,11 @@ static int compareContents(const char *filename, const char *expected)
 
     char *line = NULL;
     size_t len;
-    getline(&line, &len, fp);
+    ssize_t readLen = getline(&line, &len, fp);
     fclose(fp);
+    if ((ssize_t)len + 1 != readLen) {
+        fprintf(stderr, "differing line size %lu %lu\n", len, readLen);
+    }
     const int ret = (strncmp(line, expected, strlen(expected)) == 0);
     free(line);
     return ret;

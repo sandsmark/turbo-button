@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=turbo-button
+Comment=Tray application to toggle power/performance preference
+Categories=Utility;
+Exec=turbo-button
