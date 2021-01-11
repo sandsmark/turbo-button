@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <dirent.h>
 
 static int setContents(const char *filename, const char *contents)
 {
@@ -18,7 +19,7 @@ static int compareContents(const char *filename, const char *expected)
 {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
-        fprintf(stderr, "Unable to open file %s (%s)\n", filename, strerror(errno));
+        fprintf(stderr, "Unable to open file %s for reading (%s)\n", filename, strerror(errno));
         return 0;
     }
 
@@ -26,45 +27,96 @@ static int compareContents(const char *filename, const char *expected)
     size_t len;
     ssize_t readLen = getline(&line, &len, fp);
     fclose(fp);
-    if ((ssize_t)len + 1 != readLen) {
+    if ((ssize_t)len + 1 < readLen) {
         fprintf(stderr, "differing line size %lu %lu\n", len, readLen);
+        free(line);
+        return 0;
     }
-    const int ret = (strncmp(line, expected, strlen(expected)) == 0);
+    const int ret = strncmp(line, expected, strlen(expected)) == 0;
     free(line);
     return ret;
+}
+static const char *cpufreqPath = "/sys/devices/system/cpu/cpufreq";
+
+static int updateDir(const struct dirent *entry, const char *filename, const char *content)
+{
+    if (entry->d_type != DT_DIR) {
+        return 1;
+    }
+    if (entry->d_name[0] == '.') {
+        return 1;
+    }
+
+    char path[1024]; // I'm lazy, just give us some space
+    memset(path, 0, sizeof path);
+    snprintf(path, sizeof path, "%s/%s/%s", cpufreqPath, entry->d_name, filename);
+
+    if (!compareContents(path, content)) {
+        if (!setContents(path, content)) {
+            perror("Failed to set content");
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 int main(int argc, char *argv[])
 {
     (void)argc;
     (void)argv;
-    static const char *govFile = "/sys/devices/system/cpu/cpufreq/policy2/scaling_governor";
-    static const char *powersave = "powersave\n";
 
-    if (!compareContents(govFile, powersave)) {
-        if (!setContents(govFile, powersave)) {
-            perror("Failed to set powersave governor");
+    DIR *dir = opendir(cpufreqPath);
+    if (!dir) {
+        perror("Failed to open dir to set governor");
+        return 1;
+    }
+
+    struct dirent *ent;
+    static const char *governorFile = "scaling_governor";
+    static const char *powersave = "powersave\n";
+    while ((ent = readdir(dir))) {
+        if (!updateDir(ent, governorFile, powersave)) {
+            closedir(dir);
             return 1;
         }
     }
+    closedir(dir);
 
-    static const char *prefFile = "/sys/devices/system/cpu/cpufreq/policy2/energy_performance_preference";
+    dir = opendir(cpufreqPath);
+    if (!dir) {
+        perror("Failed to open dir to set preference");
+        return 1;
+    }
+
+    static const char *prefFile = "energy_performance_preference";
     static const char *prefPerformance = "balance_performance\n";
     static const char *prefPower = "balance_power\n";
+    static const char *performance = "performance\n";
     const char *toSet = NULL;
-    if (compareContents(prefFile, prefPerformance)) {
+
+    // don't care if they're not the same, so just check the first
+    // just a random to get current
+    static const char *prefPath = "/sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference";
+
+    if (compareContents(prefPath, prefPerformance) || compareContents(prefPath, performance)) {
         toSet = prefPower;
-    } else if (compareContents(prefFile, prefPower)) {
+    } else if (compareContents(prefPath, prefPower)) {
         toSet = prefPerformance;
     } else {
         toSet = prefPower;
         fprintf(stderr, "Unknown current preference, setting %s\n", toSet);
     }
-    if (!setContents(prefFile, toSet)) {
-        fprintf(stderr, "Failed to set preference to %s\n", toSet);
-        return 1;
+
+    while ((ent = readdir(dir))) {
+        if (!updateDir(ent, prefFile, toSet)) {
+            closedir(dir);
+            return 1;
+        }
     }
-    // Print what is the current preference
+
+    closedir(dir);
+
     printf("%s", toSet);
 
     return 0;
