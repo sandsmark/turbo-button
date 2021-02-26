@@ -13,9 +13,10 @@ public:
 public slots:
     void togglePreference();
 
-private:
+private slots:
     void updateIcon();
 
+private:
     QSystemTrayIcon *m_trayIcon;
 };
 

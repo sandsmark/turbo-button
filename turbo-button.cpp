@@ -4,6 +4,7 @@
 #include <QProcess>
 #include <QDebug>
 #include <QApplication>
+#include <QTimer>
 
 static const char *s_prefFile = "/sys/devices/system/cpu/cpufreq/policy2/energy_performance_preference";
 static const char *s_prefPerformance = "balance_performance\n";
@@ -17,6 +18,14 @@ TurboButton::TurboButton() :
     m_trayIcon->setIcon(QIcon::fromTheme("question"));
     updateIcon();
     m_trayIcon->show();
+
+    // The preference is randomly changed behind our back, so set up a timer every minute to update
+    QTimer *timer = new QTimer(this);
+    timer->setSingleShot(false);
+    timer->setTimerType(Qt::VeryCoarseTimer); // only second accuracy, but better for battery life
+    timer->setInterval(60 * 1000); // every minute
+    connect(timer, &QTimer::timeout, this, &TurboButton::updateIcon);
+    timer->start();
 }
 
 void TurboButton::togglePreference()
