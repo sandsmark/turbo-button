@@ -1,3 +1,5 @@
+#include "names.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,27 +91,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    static const char *prefFile = "energy_performance_preference";
-    static const char *prefPerformance = "balance_performance\n";
-    static const char *prefPower = "balance_power\n";
-    static const char *performance = "performance\n";
     const char *toSet = NULL;
 
-    // don't care if they're not the same, so just check the first
-    // just a random to get current
-    static const char *prefPath = "/sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference";
-
-    if (compareContents(prefPath, prefPerformance) || compareContents(prefPath, performance)) {
-        toSet = prefPower;
-    } else if (compareContents(prefPath, prefPower)) {
-        toSet = prefPerformance;
+    if (compareContents(s_prefPath, s_balancedPerformance) || compareContents(s_prefPath, s_performance)) {
+        toSet = s_power;
+    } else if (compareContents(s_prefPath, s_power)) {
+        toSet = s_performance;
     } else {
-        toSet = prefPower;
+        toSet = s_balancedPower;
         fprintf(stderr, "Unknown current preference, setting %s\n", toSet);
     }
 
     while ((ent = readdir(dir))) {
-        if (!updateDir(ent, prefFile, toSet)) {
+        if (!updateDir(ent, s_prefFile, toSet)) {
             closedir(dir);
             return 1;
         }

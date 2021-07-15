@@ -1,14 +1,12 @@
 #include "turbo-button.h"
+#include "names.h"
+
 #include <QFile>
 #include <QIcon>
 #include <QProcess>
 #include <QDebug>
 #include <QApplication>
 #include <QTimer>
-
-static const char *s_prefFile = "/sys/devices/system/cpu/cpufreq/policy2/energy_performance_preference";
-static const char *s_prefPerformance = "performance\n";
-static const char *s_prefPower = "power\n";
 
 TurboButton::TurboButton() :
     QObject(qApp)
@@ -42,16 +40,16 @@ void TurboButton::togglePreference()
 
 void TurboButton::updateIcon()
 {
-    QFile file(s_prefFile);
+    QFile file(s_prefPath);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open preference" << file.errorString();
         togglePreference();
         return;
     }
     QByteArray preference = file.readAll();
-    if (preference.endsWith(s_prefPerformance)) {
+    if (preference.endsWith(s_performance)) {
         m_trayIcon->setIcon(QIcon(":/fast.png"));
-    } else if (preference.endsWith(s_prefPower)) {
+    } else if (preference.endsWith(s_power)) {
         m_trayIcon->setIcon(QIcon(":/slow.png"));
     } else {
         qWarning() << "Unknown preference" << preference;
