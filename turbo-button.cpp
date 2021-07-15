@@ -7,8 +7,8 @@
 #include <QTimer>
 
 static const char *s_prefFile = "/sys/devices/system/cpu/cpufreq/policy2/energy_performance_preference";
-static const char *s_prefPerformance = "balance_performance\n";
-static const char *s_prefPower = "balance_power\n";
+static const char *s_prefPerformance = "performance\n";
+static const char *s_prefPower = "power\n";
 
 TurboButton::TurboButton() :
     QObject(qApp)
@@ -49,12 +49,12 @@ void TurboButton::updateIcon()
         return;
     }
     QByteArray preference = file.readAll();
-    if (preference.startsWith(s_prefPerformance)) {
+    if (preference.endsWith(s_prefPerformance)) {
         m_trayIcon->setIcon(QIcon(":/fast.png"));
-    } else if (preference.startsWith(s_prefPower)) {
+    } else if (preference.endsWith(s_prefPower)) {
         m_trayIcon->setIcon(QIcon(":/slow.png"));
     } else {
-        qWarning() << "Unknown preference";
+        qWarning() << "Unknown preference" << preference;
         m_trayIcon->setIcon(QIcon::fromTheme("question"));
     }
 }
